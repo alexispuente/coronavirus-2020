@@ -20,6 +20,9 @@ from sklearn.neighbors import (
     DistanceMetric
 )
 import json
+import matplotlib.pyplot as plt
+
+plt.style.use('fivethirtyeight')
 
 # ------------ HYPERPARAMETERS -------------
 BASE_PATH = '../COVID-19/csse_covid_19_data/'
@@ -32,7 +35,7 @@ NORMALIZE = True
 confirmed = os.path.join(
     BASE_PATH, 
     'csse_covid_19_time_series',
-    'time_series_19-covid-Confirmed.csv')
+    'time_series_covid19_confirmed_global.csv')
 confirmed = data.load_csv_data(confirmed)
 features = []
 targets = []
@@ -81,6 +84,12 @@ for _dist in ['minkowski', 'manhattan']:
             lambda a: np.histogram(a, bins=N_BINS)[0], -1, cases)
         # nearest country to this one based on trajectory
         label = knn.predict(cases)
+
+        if val == "US":
+            cases_us = cases.sum(axis=0)
+            plt.plot(cases_us, label=labels[0,1])
+            plt.legend()
+            plt.savefig('results/US_trial_diff_dist.png')
         
         if val not in predictions:
             predictions[val] = {}

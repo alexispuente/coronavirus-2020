@@ -22,10 +22,13 @@ from sklearn.neighbors import (
     DistanceMetric
 )
 import json
+import matplotlib.pyplot as plt
+
+plt.style.use('fivethirtyeight')
 
 # ------------ HYPERPARAMETERS -------------
 BASE_PATH = '../COVID-19/csse_covid_19_data/'
-N_NEIGHBORS = 5
+N_NEIGHBORS = 15
 MIN_CASES = 1000
 NORMALIZE = True
 # ------------------------------------------
@@ -33,7 +36,7 @@ NORMALIZE = True
 confirmed = os.path.join(
     BASE_PATH, 
     'csse_covid_19_time_series',
-    'time_series_19-covid-Confirmed.csv')
+    'time_series_covid19_confirmed_global.csv')
 confirmed = data.load_csv_data(confirmed)
 features = []
 targets = []
@@ -77,10 +80,53 @@ for _dist in ['minkowski', 'manhattan']:
         cases = np.diff(cases.sum(axis=0, keepdims=True), axis=-1)
         # nearest country to this one based on trajectory
         label = knn.predict(cases)
-        
+        """
+        if val == "US":
+            cases_us = cases.sum(axis=0)
+            plt.plot(cases_us, label=labels[0,1])
+            plt.legend()
+            plt.savefig('plots/US_trial_diff_dist.png')
+        """
         if val not in predictions:
             predictions[val] = {}
         predictions[val][_dist] = label.tolist()
+
+##########################################################################################################################
+
+#Get cases for the US
+df = data.filter_by_attribute(
+    confirmed, "Country/Region", "US")
+
+cases, labels = data.get_cases_chronologically(df)
+
+from matplotlib import rcParams
+rcParams.update({'figure.autolayout': True})
+
+#Plotting the US
+plt.figure(0)
+plt.title("US and Best Neighbor\n Day-to-Day Trajectories") #CHANGE TITLE
+cases_us = np.diff(cases.sum(axis=0, keepdims=True), axis=-1) 
+cases_us = cases_us.sum(axis=0)
+plt.plot(cases_us, label=labels[0,1])
+
+#Get cases for nearest neighbor
+manhattan_neighbor = predictions["US"]['minkowski'] #CHANGE TO MINKOWSKI
+
+df_neigh = data.filter_by_attribute(
+    confirmed, "Country/Region", manhattan_neighbor[0])
+
+cases_neigh, labels_neigh = data.get_cases_chronologically(df_neigh)
+
+#plotting nearest neighbor
+cases_new = np.diff(cases_neigh.sum(axis=0, keepdims=True), axis=-1) 
+cases_new = cases_new.sum(axis=0)
+plt.plot(cases_new, label=labels_neigh[0,1])
+
+plt.xlabel("Time (days since Jan 22, 2020)")
+plt.ylabel('# of confirmed cases')
+
+plt.legend()
+plt.savefig('US_predictions/N15_diff_minkowski.png')
 
 with open('results/knn_diff.json', 'w') as f:
     json.dump(predictions, f, indent=4)
